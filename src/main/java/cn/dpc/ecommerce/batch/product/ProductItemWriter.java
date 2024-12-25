@@ -16,6 +16,8 @@ import org.springframework.batch.item.Chunk;
 import java.time.LocalDateTime;
 import java.util.Map;
 
+import static cn.dpc.ecommerce.batch.consts.Constants.UPDATED_UPDATE_TIME;
+
 @Slf4j
 public class ProductItemWriter extends AbstractOpenSearcherItemWriter<Product> {
     private StepExecution stepExecution;
@@ -37,7 +39,7 @@ public class ProductItemWriter extends AbstractOpenSearcherItemWriter<Product> {
     public void write(Chunk<? extends Product> chunk) throws Exception {
         JSONArray docsJsonArr = new JSONArray();
         JSONArray associations = new JSONArray();
-        LocalDateTime lastUpdateTime = (LocalDateTime) stepExecution.getJobExecution().getExecutionContext().get("lastUpdateTime");
+        LocalDateTime lastUpdateTime = (LocalDateTime) stepExecution.getJobExecution().getExecutionContext().get(UPDATED_UPDATE_TIME);
         for (Product product : chunk) {
             Map<String, Object> associate = Maps.newLinkedHashMap();
             associate.put("association_type", "PRODUCT_GROUP");
@@ -67,7 +69,7 @@ public class ProductItemWriter extends AbstractOpenSearcherItemWriter<Product> {
 
         push(associations, ENTITY_ASSOCIATIONS_TABLE_NAME);
         push(docsJsonArr, PRODUCT_TABLE_NAME);
-        stepExecution.getJobExecution().getExecutionContext().put("lastUpdateTime", lastUpdateTime);
+        stepExecution.getJobExecution().getExecutionContext().put(UPDATED_UPDATE_TIME, lastUpdateTime);
         log.info("Last update time: {}", lastUpdateTime);
     }
 }

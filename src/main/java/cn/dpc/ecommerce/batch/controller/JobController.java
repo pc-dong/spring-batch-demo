@@ -14,13 +14,18 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import static cn.dpc.ecommerce.batch.consts.Constants.APP_NAME;
+import static cn.dpc.ecommerce.batch.consts.Constants.LAST_UPDATE_TIME;
 
 @RestController
 @RequiredArgsConstructor
@@ -45,7 +50,7 @@ public class JobController {
 
     @PostMapping("/{jobName}/stop")
     @SneakyThrows
-    public void run(@PathVariable String jobName){
+    public void run(@PathVariable String jobName) {
         jobExplorer.findRunningJobExecutions(jobName)
                 .forEach(jobExecution -> {
                     try {
@@ -56,15 +61,28 @@ public class JobController {
                 });
     }
 
+    public record JobRunRequest(String appName, LocalDateTime lastUpdateTime) {
+    }
+
     @PostMapping("/{jobName}/run")
-    public void launch(@PathVariable String jobName) {
-       var job =  applicationContext.getBean(jobName, Job.class);
+    public void launch(@PathVariable String jobName, @RequestBody JobRunRequest request) {
+        var appName = request.appName();
+        var lastUpdateTime = request.lastUpdateTime();
+        var job = applicationContext.getBean(jobName, Job.class);
 
         executors.submit(() -> {
             try {
-                jobLauncher.run(job, new JobParametersBuilder()
-                        .addLong("run.id", System.currentTimeMillis())
-                        .toJobParameters());
+                var JobParametersBuilder = new JobParametersBuilder()
+                        .addLong("run.id", System.currentTimeMillis());
+                if (appName != null) {
+                    JobParametersBuilder.addString(APP_NAME, appName);
+                }
+
+                if (lastUpdateTime != null) {
+                    JobParametersBuilder.addLocalDateTime(LAST_UPDATE_TIME, lastUpdateTime);
+                }
+
+                jobLauncher.run(job, JobParametersBuilder.toJobParameters());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

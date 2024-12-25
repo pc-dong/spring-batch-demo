@@ -64,14 +64,14 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
 
     @Bean
     @Qualifier("lastUpdateTimeStep")
-    public Step lastUpdateTimeStep(DataSource masterDataSource) {
-        return new LastUpdateTimeStep(masterDataSource, "product");
+    public Step lastUpdateTimeStep(DataSource masterDataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(masterDataSource, openSearchProperties.getAppName(), "product");
     }
 
     @Bean
     @Qualifier("lastUpdateTimeSaveStep")
     public Step lastUpdateTimeSaveStep(DataSource masterDataSource) {
-        return new LastUpdateTimeSaveStep(masterDataSource, "product");
+        return new LastUpdateTimeSaveStep(masterDataSource);
     }
 
     @Bean(name = "dataSource")
@@ -88,8 +88,15 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
 
     @Bean
     @Qualifier("masterDataSource")
-    @ConfigurationProperties(prefix = "spring.datasource.product")
+    @ConfigurationProperties(prefix = "spring.datasource.masterdata")
     public DataSource masterDataSource() {
+        return DataSourceBuilder.create().build();
+    }
+
+    @Bean
+    @Qualifier("marketingDataSource")
+    @ConfigurationProperties(prefix = "spring.datasource.marketing")
+    public DataSource marketingDataSource() {
         return DataSourceBuilder.create().build();
     }
 }
