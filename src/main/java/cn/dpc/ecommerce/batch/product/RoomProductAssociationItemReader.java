@@ -29,7 +29,7 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
                 .rowMapper(getProductAssociationsRowMapper())
                 .selectClause(selectClause)
                 .fromClause(fromClause)
-                .whereClause(whereClause)
+//                .whereClause(whereClause)
                 .sortKeys(getSortKeys())
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
@@ -45,7 +45,6 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
         LocalDateTime endTime = Optional.ofNullable(executionContext.get(Constants.END_TIME, LocalDateTime.class))
                 .orElse(LocalDateTime.now());
 
-
         this.reader.setParameterValues(Map.of("startTime", lastUpdateTime, "endTime", endTime));
         log.info("Last update time in reader: {}", lastUpdateTime);
     }
@@ -56,8 +55,12 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
         return this.reader.read();
     }
 
-    private static String selectClause = """            
-            p.id               as product_id,
+    private static String selectClause = """
+            pa.*
+            """;
+    private static String fromClause = """
+            (SELECT
+             p.id               as rs_product_id,
             p.uuid             as product_uuid,
             p.status           as product_status,
             p.type            as product_type,
@@ -105,8 +108,7 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
             vpct.date          as product_purchase_time_date,
             vpct.start_time    as product_purchase_time_start_time,
             vpct.end_time      as product_purchase_time_end_time
-            """;
-    private static String fromClause = """
+            FROM
             products as p
             left join voucher_products_constraint_properties as vpcp
                      on p.id = vpcp.product_id
@@ -119,8 +121,7 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
             left join offer_promotions as op on op.product_uuid = p.uuid and co.uuid = op.offer_uuid and op.deleted_at is null
             left join product_promotions as pop on pop.product_uuid = p.uuid and pop.deleted_at is null
             left join voucher_products_constraint_purchase_time as vpct on vpct.product_id = p.id
-            """;
-    private static String whereClause = """
+            where
             p.type = 'ROOM'
             and (p.status != 'DRAFT' or p.has_online_flag = 1)
             and p.bundle_product_id is null
@@ -152,13 +153,12 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
              or cop.updated_at > :startTime and cop.updated_at < :endTime
              or cop.deleted_at > :startTime and cop.deleted_at < :endTime
              or vpcp.updated_at > :startTime and vpcp.updated_at < :endTime
-             or vpcp.deleted_at > :startTime and vpcp.deleted_at < :endTime
-             )
+             or vpcp.deleted_at > :startTime and vpcp.deleted_at < :endTime)) pa
             """;
 
     private Map<String, Order> getSortKeys() {
         Map<String, Order> sortKeys = new LinkedHashMap<>();
-        sortKeys.put("product_id", Order.ASCENDING);
+        sortKeys.put("rs_product_id", Order.ASCENDING);
         sortKeys.put("property_id", Order.ASCENDING);
         sortKeys.put("product_campaign_offer_id", Order.ASCENDING);
         sortKeys.put("campaign_id", Order.ASCENDING);

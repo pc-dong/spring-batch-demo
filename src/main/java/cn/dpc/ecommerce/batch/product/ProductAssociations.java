@@ -7,7 +7,6 @@ import org.springframework.jdbc.core.RowMapper;
 import java.sql.Date;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -138,7 +137,7 @@ public class ProductAssociations {
 
     public String getAssociationId(Long productId, Long subProductId, Long propertyOrOutletId, Long purchaseTimeId, Long campaignOfferId) {
         // P_{product_id}_{sub_product_id}_{property_id/outlet_id}_{purchase_time_id}_{campaign_offer_id}
-        String format = "P_%d_%d_%d_%d_%d";
+        String format = "P_%s_%s_%s_%s_%s";
         return String.format(format, productId, subProductId, propertyOrOutletId, purchaseTimeId, campaignOfferId);
     }
 
@@ -159,7 +158,7 @@ public class ProductAssociations {
     }
 
     public boolean shouldSubProductDeleted() {
-        return sub_product_deleted_at != null || !"ONLINE".equals(sub_product_type);
+        return NULL_ID != getSub_product_id() && (sub_product_deleted_at != null);
     }
 
     public boolean shouldPropertyDeleted() {
@@ -209,7 +208,7 @@ public class ProductAssociations {
 
     public static RowMapper<ProductAssociations> getProductAssociationsRowMapper() {
         return (rs, rowNum) -> new ProductAssociations()
-                .setProduct_id(rs.getLong("product_id"))
+                .setProduct_id(rs.getLong("rs_product_id"))
                 .setProduct_uuid(rs.getString("product_uuid"))
                 .setProduct_status(rs.getString("product_status"))
                 .setProduct_type(rs.getString("product_type"))

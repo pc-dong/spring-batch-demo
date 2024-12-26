@@ -29,7 +29,6 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
                 .rowMapper(getProductAssociationsRowMapper())
                 .selectClause(selectClause)
                 .fromClause(fromClause)
-                .whereClause(whereClause)
                 .sortKeys(getSortKeys())
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
@@ -57,7 +56,11 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
     }
 
     private static String selectClause = """            
-            p.id              as product_id,
+            rs.*
+            """;
+    private static String fromClause = """
+            (SELECT
+            p.id              as rs_product_id,
             p.uuid            as product_uuid,
             p.status          as product_status,
             p.type            as product_type,
@@ -105,8 +108,7 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
             vpct.date         as product_purchase_time_date,
             vpct.start_time   as product_purchase_time_start_time,
             vpct.end_time     as product_purchase_time_end_time
-            """;
-    private static String fromClause = """
+            FROM
             products p
             left join (select id, type, subtype, status, uuid, bundle_product_id, updated_at, deleted_at
                       from products
@@ -125,8 +127,7 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
             left join offer_promotions op on op.product_uuid = p.uuid and co.uuid = op.offer_uuid and op.deleted_at is null
             left join product_promotions pop on pop.product_uuid = p.uuid and pop.deleted_at is null
             left join voucher_products_constraint_purchase_time vpct on vpct.product_id = p.id
-            """;
-    private static String whereClause = """
+            WHERE
             p.type = 'BUNDLE'
             and (p.status != 'DRAFT'
               or p.has_online_flag = 1)
@@ -249,13 +250,13 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
                      > :startTime
                      and o.deleted_at
                      < :endTime
-              )
+              )) rs
             """;
 
     private Map<String, Order> getSortKeys() {
         Map<String, Order> sortKeys = new LinkedHashMap<>();
+        sortKeys.put("rs_product_id", Order.ASCENDING);
         sortKeys.put("sub_product_id", Order.ASCENDING);
-        sortKeys.put("product_id", Order.ASCENDING);
         sortKeys.put("outlet_id", Order.ASCENDING);
         sortKeys.put("property_id", Order.ASCENDING);
         sortKeys.put("product_campaign_offer_id", Order.ASCENDING);

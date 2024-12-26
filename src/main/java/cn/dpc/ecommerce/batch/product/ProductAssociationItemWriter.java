@@ -21,15 +21,11 @@ import java.util.Optional;
 
 import static cn.dpc.ecommerce.batch.consts.Constants.NULL_UUID;
 import static cn.dpc.ecommerce.batch.consts.Constants.UPDATED_UPDATE_TIME;
-import static cn.dpc.ecommerce.batch.product.ProductAssociations.CAMPAIGN_OFFER;
-import static cn.dpc.ecommerce.batch.product.ProductAssociations.OUTLET;
-import static cn.dpc.ecommerce.batch.product.ProductAssociations.PROPERTY;
-import static cn.dpc.ecommerce.batch.product.ProductAssociations.PURCHASE_TIME;
-import static cn.dpc.ecommerce.batch.product.ProductAssociations.SUB_PRODUCT;
 
 @Slf4j
 public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter<ProductAssociations> {
     private StepExecution stepExecution;
+    private String appName;
 
     public ProductAssociationItemWriter(OpenSearchProperties openSearchProperties,
                                         DocumentClient documentClient) {
@@ -42,6 +38,7 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
     @BeforeStep
     public void beforeStep(StepExecution stepExecution) {
         this.stepExecution = stepExecution;
+        this.appName = Optional.ofNullable(stepExecution.getJobParameters().getString("appName")).orElse(openSearchProperties.getAppName());
     }
 
     @Override
@@ -54,6 +51,10 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
                 delete(id, associations);
                 List<String> shouldDeletedIds = product.getShouldDeletedIdsForDelete();
                 shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+                log.info("Delete item: {}", id);
+                if (product.getUpdatedAt().isAfter(lastUpdateTime)) {
+                    lastUpdateTime = product.getUpdatedAt();
+                }
                 continue;
             }
 
@@ -84,14 +85,14 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
             List<String> shouldDeletedIds = product.getShouldDeletedIdsForUpdate();
             shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
 
-            log.info("Writing item: {}", product.getAssociationId());
+            log.info("Writing item: {}", id);
             associations.put(associateJson);
             if (product.getUpdatedAt().isAfter(lastUpdateTime)) {
                 lastUpdateTime = product.getUpdatedAt();
             }
         }
 
-        push(associations, TABLE_NAME);
+        push(associations, TABLE_NAME, appName);
         stepExecution.getJobExecution().getExecutionContext().put(UPDATED_UPDATE_TIME, lastUpdateTime);
         log.info("Last update time: {}", lastUpdateTime);
     }

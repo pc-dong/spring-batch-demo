@@ -45,7 +45,7 @@ public class LastUpdateTimeStep implements Step {
         ExecutionContext executionContext = stepExecution.getJobExecution().getExecutionContext();
         var appName = jobParameters.getString(APP_NAME);
         appName = StringUtils.hasLength(appName) ? appName : this.appName;
-        var lastUpdateTime = jobParameters.getString(LAST_UPDATE_TIME);
+        var lastUpdateTime = jobParameters.getLocalDateTime(LAST_UPDATE_TIME);
         if (null == lastUpdateTime) {
             String querySql = "select last_update_time from update_time where name = ? AND app_name = ?";
             List<LocalDateTime> lastUpdateTimes = jdbcTemplate.query(querySql, new Object[]{this.type, appName},
@@ -57,6 +57,8 @@ public class LastUpdateTimeStep implements Step {
             } else {
                 executionContext.put(LAST_UPDATE_TIME, LocalDateTime.now().minusYears(5));
             }
+        } else {
+            executionContext.put(LAST_UPDATE_TIME, lastUpdateTime);
         }
 
         executionContext.put(UPDATED_UPDATE_TIME, executionContext.get(LAST_UPDATE_TIME));
