@@ -4,8 +4,11 @@ import cn.dpc.ecommerce.batch.listener.MyJobExecutionListener;
 import cn.dpc.ecommerce.batch.opensearch.OpenSearchProperties;
 import cn.dpc.ecommerce.batch.product.BundleProductAssociationItemReader;
 import cn.dpc.ecommerce.batch.product.FBProductAssociationItemReader;
+import cn.dpc.ecommerce.batch.product.Product;
 import cn.dpc.ecommerce.batch.product.ProductAssociationItemWriter;
 import cn.dpc.ecommerce.batch.product.ProductAssociations;
+import cn.dpc.ecommerce.batch.product.ProductItemReader;
+import cn.dpc.ecommerce.batch.product.ProductItemWriter;
 import cn.dpc.ecommerce.batch.product.RoomProductAssociationItemReader;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeSaveStep;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeStep;
@@ -44,9 +47,14 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
                           Step roomProductAssociationsUpdateTimeStep,
                           Step fbProductAssociationsUpdateTimeStep,
                           Step bundleProductAssociationsUpdateTimeStep,
+                          Step productUpdateTimeStep,
+                          Step productStep,
                           Step lastUpdateTimeSaveStep) {
         return new JobBuilder("productJob", jobRepository)
-                .start(roomProductAssociationsUpdateTimeStep)
+                .start(productUpdateTimeStep)
+                .next(productStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(roomProductAssociationsUpdateTimeStep)
                 .next(roomProductAssociationStep)
                 .next(lastUpdateTimeSaveStep)
                 .next(fbProductAssociationsUpdateTimeStep)
@@ -59,6 +67,16 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
                 .build();
     }
 
+    @Bean
+    public Step productStep(JobRepository jobRepository,
+                            DataSourceTransactionManager transactionManager,
+                            ItemWriter<Product> productItemWriter) {
+        return new StepBuilder("productStep", jobRepository)
+                .<Product, Product>chunk(PAGE_SIZE, transactionManager)
+                .reader(productItemReader())
+                .writer(productItemWriter)
+                .build();
+    }
 
     @Bean
     public Step roomProductAssociationStep(JobRepository jobRepository,
@@ -94,6 +112,17 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
     }
 
     @Bean
+    public ItemReader<Product> productItemReader() {
+        return new ProductItemReader(masterDataSource(), PAGE_SIZE, FETCH_SIZE);
+    }
+
+    @Bean
+    public ItemWriter<Product> productItemWriter(OpenSearchProperties openSearchProperties,
+                                                DocumentClient documentClient) {
+        return new ProductItemWriter(openSearchProperties, documentClient);
+    }
+
+    @Bean
     public ItemReader<ProductAssociations> roomProductAssociationItemReader() {
         return new RoomProductAssociationItemReader(masterDataSource(), PAGE_SIZE, FETCH_SIZE);
     }
@@ -114,6 +143,12 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
         return new ProductAssociationItemWriter(openSearchProperties, documentClient);
     }
 
+
+    @Bean
+    @Qualifier("productUpdateTimeStep")
+    public Step productUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "products");
+    }
 
     @Bean
     @Qualifier("roomProductAssociationsUpdateTimeStep")

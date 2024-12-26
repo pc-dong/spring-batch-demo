@@ -65,6 +65,7 @@ public class BundleProductAssociationItemReader implements ItemReader<ProductAss
             p.status          as product_status,
             p.type            as product_type,
             p.subtype         as product_subtype,
+            p.inventory        as product_inventory,
             p.has_online_flag as product_has_online_flag,
             p.deleted_at      as product_deleted_at,
             p.updated_at      as product_updated_at,

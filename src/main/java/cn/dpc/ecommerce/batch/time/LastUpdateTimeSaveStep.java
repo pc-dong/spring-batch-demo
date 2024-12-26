@@ -40,7 +40,7 @@ public class LastUpdateTimeSaveStep implements Step {
         ExecutionContext executionContext = stepExecution.getJobExecution().getExecutionContext();
         var type = executionContext.getString(TYPE);
         var appName = executionContext.getString(APP_NAME);
-        log.info("updatedLastUpdateTime: {}", stepExecution.getExecutionContext().get(UPDATED_UPDATE_TIME));
+        log.info("updatedLastUpdateTime: {}", stepExecution.getJobExecution().getExecutionContext().get(UPDATED_UPDATE_TIME));
         var querySql = "select count(1) from update_time where name = ? and app_name = ?";
         LocalDateTime lastUpdateTime = Optional.ofNullable(executionContext.get(UPDATED_UPDATE_TIME))
                 .map(o -> (LocalDateTime) o).orElse(LocalDateTime.now().minusYears(5));

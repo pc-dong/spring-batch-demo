@@ -60,9 +60,10 @@ public class RoomProductAssociationItemReader implements ItemReader<ProductAssoc
             """;
     private static String fromClause = """
             (SELECT
-             p.id               as rs_product_id,
+            p.id               as rs_product_id,
             p.uuid             as product_uuid,
             p.status           as product_status,
+            p.inventory        as product_inventory,
             p.type            as product_type,
             p.subtype         as product_subtype,
             p.has_online_flag as product_has_online_flag,

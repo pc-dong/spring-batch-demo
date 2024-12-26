@@ -27,6 +27,7 @@ public class ProductAssociations {
     private String product_uuid;
     private String product_status;
     private String product_type;
+    private Long product_inventory;
     private String product_subtype;
     private Boolean product_has_online_flag;
     private LocalDateTime product_deleted_at;
@@ -154,7 +155,7 @@ public class ProductAssociations {
     }
 
     public boolean shouldProductDeleted() {
-        return product_deleted_at != null || !"ONLINE".equals(product_status);
+        return product_deleted_at != null || !"ONLINE".equals(product_status) || product_inventory <= 0;
     }
 
     public boolean shouldSubProductDeleted() {
@@ -213,6 +214,7 @@ public class ProductAssociations {
                 .setProduct_status(rs.getString("product_status"))
                 .setProduct_type(rs.getString("product_type"))
                 .setProduct_subtype(rs.getString("product_subtype"))
+                .setProduct_inventory(rs.getLong("product_inventory"))
                 .setProduct_has_online_flag(rs.getBoolean("product_has_online_flag"))
                 .setProduct_deleted_at(Optional.ofNullable(rs.getTimestamp("product_deleted_at")).map(Timestamp::toLocalDateTime).orElse(null))
                 .setProduct_updated_at(Optional.ofNullable(rs.getTimestamp("product_updated_at")).map(Timestamp::toLocalDateTime).orElse(null))
@@ -275,9 +277,13 @@ public class ProductAssociations {
     }
 
     public LocalDateTime getUpdatedAt() {
-        return Stream.of(product_updated_at, sub_product_updated_at, property_updated_at,
-                        outlet_updated_at, product_campaign_offer_updated_at, campaign_updated_at,
-                        product_purchase_time_updated_at)
+        return Stream.of(product_updated_at, product_deleted_at,
+                        sub_product_updated_at, sub_product_deleted_at,
+                        property_updated_at, property_deleted_at,
+                        outlet_updated_at, outlet_deleted_at,
+                        product_campaign_offer_updated_at, product_campaign_offer_deleted_at,
+                        campaign_updated_at, campaign_deleted_at,
+                        product_purchase_time_updated_at, product_purchase_time_deleted_at)
                 .filter(Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
