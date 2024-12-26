@@ -12,8 +12,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static cn.dpc.ecommerce.batch.consts.Constants.NULL_ID;
-
 @Data
 @Accessors(chain = true)
 public class SubProduct {
