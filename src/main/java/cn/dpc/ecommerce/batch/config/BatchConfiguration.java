@@ -2,9 +2,14 @@ package cn.dpc.ecommerce.batch.config;
 
 import cn.dpc.ecommerce.batch.listener.MyJobExecutionListener;
 import cn.dpc.ecommerce.batch.opensearch.OpenSearchProperties;
+import cn.dpc.ecommerce.batch.product.BundleProductAssociationItemReader;
+import cn.dpc.ecommerce.batch.product.FBProductAssociationItemReader;
 import cn.dpc.ecommerce.batch.product.Product;
+import cn.dpc.ecommerce.batch.product.ProductAssociationItemWriter;
+import cn.dpc.ecommerce.batch.product.ProductAssociations;
 import cn.dpc.ecommerce.batch.product.ProductItemReader;
 import cn.dpc.ecommerce.batch.product.ProductItemWriter;
+import cn.dpc.ecommerce.batch.product.RoomProductAssociationItemReader;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeSaveStep;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeStep;
 import com.aliyun.opensearch.DocumentClient;
@@ -31,11 +36,24 @@ import javax.sql.DataSource;
 public class BatchConfiguration extends DefaultBatchConfiguration {
 
     @Bean
-    @Qualifier("masterJob")
-    public Job masterJob(JobRepository jobRepository, Step masterStep, Step lastUpdateTimeStep, Step lastUpdateTimeSaveStep) {
-        return new JobBuilder("masterJob", jobRepository)
-                .start(lastUpdateTimeStep)
-                .next(masterStep)
+    @Qualifier("productJob")
+    public Job productJob(JobRepository jobRepository,
+                          Step roomProductAssociationStep,
+                          Step fbProductAssociationStep,
+                          Step bundleProductAssociationStep,
+                          Step roomProductAssociationsUpdateTimeStep,
+                          Step fbProductAssociationsUpdateTimeStep,
+                          Step bundleProductAssociationsUpdateTimeStep,
+                          Step lastUpdateTimeSaveStep) {
+        return new JobBuilder("productJob", jobRepository)
+                .start(roomProductAssociationsUpdateTimeStep)
+                .next(roomProductAssociationStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(fbProductAssociationsUpdateTimeStep)
+                .next(fbProductAssociationStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(bundleProductAssociationsUpdateTimeStep)
+                .next(bundleProductAssociationStep)
                 .next(lastUpdateTimeSaveStep)
                 .listener(new MyJobExecutionListener())
                 .build();
@@ -51,6 +69,62 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
                 .build();
     }
 
+
+    @Bean
+    public Step roomProductAssociationStep(JobRepository jobRepository,
+                                           DataSourceTransactionManager transactionManager,
+                                           ItemWriter<ProductAssociations> productAssociationItemWriter) {
+        return new StepBuilder("roomProductAssociationStep", jobRepository)
+                .<ProductAssociations, ProductAssociations>chunk(100, transactionManager)
+                .reader(roomProductAssociationItemReader())
+                .writer(productAssociationItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step fbProductAssociationStep(JobRepository jobRepository,
+                                         DataSourceTransactionManager transactionManager,
+                                         ItemWriter<ProductAssociations> productAssociationItemWriter) {
+        return new StepBuilder("fbProductAssociationStep", jobRepository)
+                .<ProductAssociations, ProductAssociations>chunk(100, transactionManager)
+                .reader(fbProductAssociationItemReader())
+                .writer(productAssociationItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step bundleProductAssociationStep(JobRepository jobRepository,
+                                             DataSourceTransactionManager transactionManager,
+                                             ItemWriter<ProductAssociations> productAssociationItemWriter) {
+        return new StepBuilder("bundleProductAssociationStep", jobRepository)
+                .<ProductAssociations, ProductAssociations>chunk(100, transactionManager)
+                .reader(bundleProductAssociationItemReader())
+                .writer(productAssociationItemWriter)
+                .build();
+    }
+
+    @Bean
+    public ItemReader<ProductAssociations> roomProductAssociationItemReader() {
+        return new RoomProductAssociationItemReader(masterDataSource(), 100, 100);
+    }
+
+    @Bean
+    public ItemReader<ProductAssociations> fbProductAssociationItemReader() {
+        return new FBProductAssociationItemReader(masterDataSource(), 100, 100);
+    }
+
+    @Bean
+    public ItemReader<ProductAssociations> bundleProductAssociationItemReader() {
+        return new BundleProductAssociationItemReader(masterDataSource(), 100, 100);
+    }
+
+    @Bean
+    public ItemWriter<ProductAssociations> productAssociationItemWriter(OpenSearchProperties openSearchProperties,
+                                                                        DocumentClient documentClient) {
+        return new ProductAssociationItemWriter(openSearchProperties, documentClient);
+    }
+
+
     @Bean
     public ItemReader<Product> masterItemReader() {
         return new ProductItemReader(masterDataSource(), 10, 10);
@@ -63,9 +137,21 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
     }
 
     @Bean
-    @Qualifier("lastUpdateTimeStep")
-    public Step lastUpdateTimeStep(DataSource masterDataSource, OpenSearchProperties openSearchProperties) {
-        return new LastUpdateTimeStep(masterDataSource, openSearchProperties.getAppName(), "product");
+    @Qualifier("roomProductAssociationsUpdateTimeStep")
+    public Step roomProductAssociationsUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "room_product_associations");
+    }
+
+    @Bean
+    @Qualifier("fbProductAssociationsUpdateTimeStep")
+    public Step fbProductAssociationsUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "fb_product_associations");
+    }
+
+    @Bean
+    @Qualifier("bundleProductAssociationsUpdateTimeStep")
+    public Step bundleProductAssociationsUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "bundle_product_associations");
     }
 
     @Bean
