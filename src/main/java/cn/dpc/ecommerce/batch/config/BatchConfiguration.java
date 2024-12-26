@@ -10,6 +10,9 @@ import cn.dpc.ecommerce.batch.product.ProductAssociations;
 import cn.dpc.ecommerce.batch.product.ProductItemReader;
 import cn.dpc.ecommerce.batch.product.ProductItemWriter;
 import cn.dpc.ecommerce.batch.product.RoomProductAssociationItemReader;
+import cn.dpc.ecommerce.batch.product.SubProduct;
+import cn.dpc.ecommerce.batch.product.SubProductItemReader;
+import cn.dpc.ecommerce.batch.product.SubProductItemWriter;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeSaveStep;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeStep;
 import com.aliyun.opensearch.DocumentClient;
@@ -49,10 +52,15 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
                           Step bundleProductAssociationsUpdateTimeStep,
                           Step productUpdateTimeStep,
                           Step productStep,
+                          Step subProductStep,
+                          Step subProductUpdateTimeStep,
                           Step lastUpdateTimeSaveStep) {
         return new JobBuilder("productJob", jobRepository)
                 .start(productUpdateTimeStep)
                 .next(productStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(subProductUpdateTimeStep)
+                .next(subProductStep)
                 .next(lastUpdateTimeSaveStep)
                 .next(roomProductAssociationsUpdateTimeStep)
                 .next(roomProductAssociationStep)
@@ -75,6 +83,17 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
                 .<Product, Product>chunk(PAGE_SIZE, transactionManager)
                 .reader(productItemReader())
                 .writer(productItemWriter)
+                .build();
+    }
+
+    @Bean
+    public Step subProductStep(JobRepository jobRepository,
+                               DataSourceTransactionManager transactionManager,
+                               ItemWriter<SubProduct> subProductItemWriter) {
+        return new StepBuilder("subProductStep", jobRepository)
+                .<SubProduct, SubProduct>chunk(PAGE_SIZE, transactionManager)
+                .reader(subProductItemReader())
+                .writer(subProductItemWriter)
                 .build();
     }
 
@@ -123,6 +142,17 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
     }
 
     @Bean
+    public ItemReader<SubProduct> subProductItemReader() {
+        return new SubProductItemReader(masterDataSource(), PAGE_SIZE, FETCH_SIZE);
+    }
+
+    @Bean
+    public ItemWriter<SubProduct> subProductItemWriter(OpenSearchProperties openSearchProperties,
+                                                       DocumentClient documentClient) {
+        return new SubProductItemWriter(openSearchProperties, documentClient);
+    }
+
+    @Bean
     public ItemReader<ProductAssociations> roomProductAssociationItemReader() {
         return new RoomProductAssociationItemReader(masterDataSource(), PAGE_SIZE, FETCH_SIZE);
     }
@@ -148,6 +178,12 @@ public class BatchConfiguration extends DefaultBatchConfiguration {
     @Qualifier("productUpdateTimeStep")
     public Step productUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
         return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "products");
+    }
+
+    @Bean
+    @Qualifier("subProductUpdateTimeStep")
+    public Step subProductUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "sub_products");
     }
 
     @Bean

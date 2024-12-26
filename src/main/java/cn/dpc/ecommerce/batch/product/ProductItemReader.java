@@ -22,7 +22,7 @@ public class ProductItemReader implements ItemReader<Product> {
 
     public ProductItemReader(DataSource dataSource, int pageSize, int fetchSize) {
         this.reader = new JdbcPagingItemReaderBuilder<Product>()
-                .name("productAssociationItemReader")
+                .name("productItemReader")
                 .dataSource(dataSource)
                 .rowMapper(Product.getRowMapper())
                 .selectClause(selectClause)
