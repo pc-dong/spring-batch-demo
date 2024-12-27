@@ -117,9 +117,7 @@ public class OutletAssociation {
     }
 
     public List<String> getShouldDeletedIdsForUpdate() {
-        return NULL_ID != cuisine_id
-                ? List.of(String.format("O_%d_%d", getOutlet_id(), NULL_ID))
-                : List.of();
+        return getShouldDeletedIdsForDelete();
     }
 
     public LocalDateTime getUpdatedAt() {
