@@ -1,7 +1,6 @@
 package cn.dpc.ecommerce.batch.campaign;
 
 import cn.dpc.ecommerce.batch.consts.Constants;
-import cn.dpc.ecommerce.batch.location.OutletAssociation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.annotation.BeforeStep;

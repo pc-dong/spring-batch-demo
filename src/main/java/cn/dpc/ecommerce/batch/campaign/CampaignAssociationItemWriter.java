@@ -1,6 +1,5 @@
 package cn.dpc.ecommerce.batch.campaign;
 
-import cn.dpc.ecommerce.batch.location.OutletAssociation;
 import cn.dpc.ecommerce.batch.opensearch.AbstractOpenSearcherItemWriter;
 import cn.dpc.ecommerce.batch.opensearch.OpenSearchProperties;
 import com.aliyun.opensearch.DocumentClient;
@@ -20,7 +19,6 @@ import java.util.Map;
 import java.util.Optional;
 
 import static cn.dpc.ecommerce.batch.consts.Constants.NULL_ID;
-import static cn.dpc.ecommerce.batch.consts.Constants.NULL_UUID;
 import static cn.dpc.ecommerce.batch.consts.Constants.UPDATED_UPDATE_TIME;
 
 @Slf4j
