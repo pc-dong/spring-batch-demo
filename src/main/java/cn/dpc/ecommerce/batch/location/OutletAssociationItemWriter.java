@@ -74,6 +74,7 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
                 associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
                 log.info("Writing outlet item: {}", newId);
                 associations.put(associateJson);
+
                 lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
                 continue;
             }
@@ -90,11 +91,12 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
             JSONObject associateJson = new JSONObject();
             associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
+            associations.put(associateJson);
 
             List<String> shouldDeletedIds = outlet.getShouldDeletedIdsForUpdate();
             shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
 
-            associations.put(associateJson);
+
             lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
         }
 

@@ -49,13 +49,7 @@ public class ProductJobConfiguration {
                           Step subProductUpdateTimeStep,
                           Step lastUpdateTimeSaveStep) {
         return new JobBuilder("productJob", jobRepository)
-                .start(productUpdateTimeStep)
-                .next(productStep)
-                .next(lastUpdateTimeSaveStep)
-                .next(subProductUpdateTimeStep)
-                .next(subProductStep)
-                .next(lastUpdateTimeSaveStep)
-                .next(roomProductAssociationsUpdateTimeStep)
+                .start(roomProductAssociationsUpdateTimeStep)
                 .next(roomProductAssociationStep)
                 .next(lastUpdateTimeSaveStep)
                 .next(fbProductAssociationsUpdateTimeStep)
@@ -63,6 +57,12 @@ public class ProductJobConfiguration {
                 .next(lastUpdateTimeSaveStep)
                 .next(bundleProductAssociationsUpdateTimeStep)
                 .next(bundleProductAssociationStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(productUpdateTimeStep)
+                .next(productStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(subProductUpdateTimeStep)
+                .next(subProductStep)
                 .next(lastUpdateTimeSaveStep)
                 .listener(new MyJobExecutionListener())
                 .build();

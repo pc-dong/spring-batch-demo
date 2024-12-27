@@ -84,11 +84,12 @@ public class CampaignAssociationItemWriter extends AbstractOpenSearcherItemWrite
             JSONObject associateJson = new JSONObject();
             associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
+            associations.put(associateJson);
 
             List<String> shouldDeletedIds = campaign.getShouldDeletedIdsForUpdate();
             shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
 
-            associations.put(associateJson);
+
             lastUpdateTime = getLastUpdateTime(campaign, lastUpdateTime);
         }
 

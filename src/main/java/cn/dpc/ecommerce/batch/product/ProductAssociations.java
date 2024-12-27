@@ -136,7 +136,7 @@ public class ProductAssociations {
         return getAssociationId(getProduct_id(), getSub_product_id(), getOutletOrPropertyId(), getProduct_purchase_time_id(), getProduct_campaign_offer_id());
     }
 
-    public String getAssociationId(Long productId, Long subProductId, Long propertyOrOutletId, Long purchaseTimeId, Long campaignOfferId) {
+    public static String getAssociationId(Long productId, Long subProductId, Long propertyOrOutletId, Long purchaseTimeId, Long campaignOfferId) {
         // P_{product_id}_{sub_product_id}_{property_id/outlet_id}_{purchase_time_id}_{campaign_offer_id}
         String format = "P_%s_%s_%s_%s_%s";
         return String.format(format, productId, subProductId, propertyOrOutletId, purchaseTimeId, campaignOfferId);
@@ -155,7 +155,8 @@ public class ProductAssociations {
     }
 
     public boolean shouldProductDeleted() {
-        return product_deleted_at != null || !"ONLINE".equals(product_status) || product_inventory <= 0;
+        return product_deleted_at != null || !"ONLINE".equals(product_status) || product_inventory <= 0
+                || shouldPropertyDeleted() || shouldOutletDeleted();
     }
 
     public boolean shouldSubProductDeleted() {
@@ -296,10 +297,15 @@ public class ProductAssociations {
     public static final String PURCHASE_TIME = "purchase_time";
 
     public List<String> getShouldDeletedIdsForDelete() {
-        return getIdsProductIdNoChange();
+        List<String> ids = new ArrayList<>();
+        ids.addAll(getShouldDeletedIdsForSubProductDelete());
+        ids.addAll(getShouldDeletedIdsForPropertyOrOutletDelete());
+        ids.addAll(getShouldDeletedIdsForPurchaseTimeDelete());
+        ids.addAll(getShouldDeletedIdsForCampaignDelete());
+        return ids;
     }
 
-    private List<String> getIdsProductIdNoChange() {
+    public List<String> getShouldDeletedIdsForSubProductDelete() {
         List<String> ids = new ArrayList<>();
         if (NULL_ID != getSub_product_id()) {
             ids.add(getAssociationId(getProduct_id(), NULL_ID, getOutletOrPropertyId(), getProduct_purchase_time_id(), getProduct_campaign_offer_id()));
@@ -311,27 +317,39 @@ public class ProductAssociations {
             ids.add(getAssociationId(getProduct_id(), NULL_ID, getOutletOrPropertyId(), NULL_ID, NULL_ID));
             ids.add(getAssociationId(getProduct_id(), NULL_ID, NULL_ID, NULL_ID, NULL_ID));
         }
+        return ids;
+    }
 
+    public List<String> getShouldDeletedIdsForPropertyOrOutletDelete() {
+        List<String> ids = new ArrayList<>();
         if (NULL_ID != getOutletOrPropertyId()) {
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), NULL_ID, getProduct_purchase_time_id(), getProduct_campaign_offer_id()));
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), NULL_ID, getProduct_purchase_time_id(), NULL_ID));
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), NULL_ID, NULL_ID, getProduct_campaign_offer_id()));
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), NULL_ID, NULL_ID, NULL_ID));
         }
+        return ids;
+    }
 
+    public List<String> getShouldDeletedIdsForPurchaseTimeDelete() {
+        List<String> ids = new ArrayList<>();
         if (NULL_ID != getProduct_purchase_time_id()) {
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), getOutletOrPropertyId(), NULL_ID, getProduct_campaign_offer_id()));
             ids.add(getAssociationId(getProduct_id(), getSub_product_id(), getOutletOrPropertyId(), NULL_ID, NULL_ID));
         }
-
-        if (NULL_ID != getProduct_campaign_offer_id()) {
-            ids.add(getAssociationId(getProduct_id(), getSub_product_id(), getOutletOrPropertyId(), getProduct_purchase_time_id(), NULL_ID));
-        }
-
         return ids;
     }
 
+    public List<String> getShouldDeletedIdsForCampaignDelete() {
+        List<String> ids = new ArrayList<>();
+        if (NULL_ID != getProduct_campaign_offer_id()) {
+            ids.add(getAssociationId(getProduct_id(), getSub_product_id(), getOutletOrPropertyId(), getProduct_purchase_time_id(), NULL_ID));
+        }
+        return ids;
+    }
+
+
     public List<String> getShouldDeletedIdsForUpdate() {
-        return getIdsProductIdNoChange();
+        return getShouldDeletedIdsForDelete();
     }
 }
