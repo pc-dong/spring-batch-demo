@@ -1,9 +1,12 @@
 package cn.dpc.ecommerce.batch.config;
 
 import cn.dpc.ecommerce.batch.listener.MyJobExecutionListener;
+import cn.dpc.ecommerce.batch.location.Outlet;
 import cn.dpc.ecommerce.batch.location.OutletAssociation;
 import cn.dpc.ecommerce.batch.location.OutletAssociationItemReader;
 import cn.dpc.ecommerce.batch.location.OutletAssociationItemWriter;
+import cn.dpc.ecommerce.batch.location.OutletItemReader;
+import cn.dpc.ecommerce.batch.location.OutletItemWriter;
 import cn.dpc.ecommerce.batch.opensearch.OpenSearchProperties;
 import cn.dpc.ecommerce.batch.time.LastUpdateTimeStep;
 import com.aliyun.opensearch.DocumentClient;
@@ -25,16 +28,21 @@ import static cn.dpc.ecommerce.batch.config.BatchConfiguration.FETCH_SIZE;
 import static cn.dpc.ecommerce.batch.config.BatchConfiguration.PAGE_SIZE;
 
 @Configuration
-public class OutletAssociationJobConfiguration {
+public class OutletJobConfiguration {
     @Bean
-    @Qualifier("outletAssociationJob")
-    public Job outletAssociationJob(JobRepository jobRepository,
+    @Qualifier("outletJob")
+    public Job outletJob(JobRepository jobRepository,
                           Step outletAssociationStep,
                           Step outletAssociationUpdateTimeStep,
-                          Step lastUpdateTimeSaveStep) {
+                          Step lastUpdateTimeSaveStep,
+                          Step outletStep,
+                          Step outletUpdateTimeStep) {
         return new JobBuilder("outletAssociationJob", jobRepository)
                 .start(outletAssociationUpdateTimeStep)
                 .next(outletAssociationStep)
+                .next(lastUpdateTimeSaveStep)
+                .next(outletUpdateTimeStep)
+                .next(outletStep)
                 .next(lastUpdateTimeSaveStep)
                 .listener(new MyJobExecutionListener())
                 .build();
@@ -53,7 +61,6 @@ public class OutletAssociationJobConfiguration {
                 .build();
     }
 
-
     @Bean
     public ItemReader<OutletAssociation> outletAssociationItemReader(DataSource masterDataSource) {
         return new OutletAssociationItemReader(masterDataSource, PAGE_SIZE, FETCH_SIZE);
@@ -70,5 +77,36 @@ public class OutletAssociationJobConfiguration {
     @Qualifier("outletAssociationUpdateTimeStep")
     public Step outletAssociationUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
         return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "outlet_association");
+    }
+
+    @Bean
+    public Step outletStep(JobRepository jobRepository,
+                            DataSourceTransactionManager transactionManager,
+                            ItemReader<Outlet> outletItemReader,
+                            ItemWriter<Outlet> outletItemWriter) {
+        return new StepBuilder("outletStep", jobRepository)
+                .<Outlet, Outlet>chunk(PAGE_SIZE, transactionManager)
+                .reader(outletItemReader)
+                .writer(outletItemWriter)
+                .allowStartIfComplete(true)
+                .build();
+    }
+
+    @Bean
+    public ItemReader<Outlet> outletItemReader(DataSource masterDataSource) {
+        return new OutletItemReader(masterDataSource, PAGE_SIZE, FETCH_SIZE);
+    }
+
+    @Bean
+    public ItemWriter<Outlet> outletItemWriter(OpenSearchProperties openSearchProperties,
+                                                                     DocumentClient documentClient) {
+        return new OutletItemWriter(openSearchProperties, documentClient);
+    }
+
+
+    @Bean
+    @Qualifier("outletUpdateTimeStep")
+    public Step outletUpdateTimeStep(DataSource dataSource, OpenSearchProperties openSearchProperties) {
+        return new LastUpdateTimeStep(dataSource, openSearchProperties.getAppName(), "outlets");
     }
 }

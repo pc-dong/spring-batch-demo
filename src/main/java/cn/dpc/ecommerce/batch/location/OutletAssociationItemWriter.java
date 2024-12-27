@@ -72,7 +72,7 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
                 JSONObject associateJson = new JSONObject();
                 associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
                 associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
-                log.info("Writing outlet item: {}", newId);
+                log.info("Writing outlet association item: {}", newId);
                 associations.put(associateJson);
 
                 lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
@@ -87,7 +87,7 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
             associate.put("outlet_cuisine_uuid", outlet.getCuisine_uuid());
             associate.put("cuisine_name_chinese_search", outlet.getCuisine_name_chinese());
             associate.put("cuisine_name_chinese_filter", outlet.getCuisine_name_chinese());
-            log.info("Writing outlet item: {}", id);
+            log.info("Writing outlet association item: {}", id);
             JSONObject associateJson = new JSONObject();
             associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
@@ -113,7 +113,7 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
     }
 
     private static void delete(String id, JSONArray associations) {
-        log.info("Delete outlet item: {}", id);
+        log.info("Delete outlet association item: {}", id);
         JSONObject deleteJson = new JSONObject();
         deleteJson.put(DocumentConstants.DOC_KEY_CMD, Command.DELETE.toString());
         deleteJson.put(DocumentConstants.DOC_KEY_FIELDS, Map.of("id", id));

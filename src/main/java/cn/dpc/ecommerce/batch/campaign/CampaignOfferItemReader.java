@@ -1,27 +1,18 @@
 package cn.dpc.ecommerce.batch.campaign;
 
-import cn.dpc.ecommerce.batch.consts.Constants;
+import cn.dpc.ecommerce.batch.common.BaseItemReader;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.annotation.BeforeStep;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.Order;
 import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
 
 import javax.sql.DataSource;
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
-public class CampaignOfferItemReader implements ItemReader<CampaignOffer> {
-    private final JdbcPagingItemReader<CampaignOffer> reader;
-
+public class CampaignOfferItemReader extends BaseItemReader<CampaignOffer> {
     public CampaignOfferItemReader(DataSource dataSource, int pageSize, int fetchSize) {
-        this.reader = new JdbcPagingItemReaderBuilder<CampaignOffer>()
+        super(new JdbcPagingItemReaderBuilder<CampaignOffer>()
                 .name("campaignOfferItemReader")
                 .dataSource(dataSource)
                 .rowMapper(CampaignOffer.getRowMapper())
@@ -30,31 +21,12 @@ public class CampaignOfferItemReader implements ItemReader<CampaignOffer> {
                 .sortKeys(getSortKeys())
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
-                .build();
-    }
-
-
-    @BeforeStep
-    public void beforeStep(StepExecution stepExecution) {
-        ExecutionContext executionContext = stepExecution.getJobExecution().getExecutionContext();
-        LocalDateTime lastUpdateTime = Optional.ofNullable(executionContext.get(Constants.LAST_UPDATE_TIME))
-                .map(o -> (LocalDateTime) o).orElse(LocalDateTime.now().minusYears(5));
-        LocalDateTime endTime = Optional.ofNullable(executionContext.get(Constants.END_TIME, LocalDateTime.class))
-                .orElse(LocalDateTime.now());
-
-        this.reader.setParameterValues(Map.of("startTime", lastUpdateTime, "endTime", endTime));
-        log.info("Last update time in reader: {}", lastUpdateTime);
-    }
-
-    @Override
-    public CampaignOffer read() throws Exception {
-        this.reader.afterPropertiesSet();
-        return this.reader.read();
+                .build());
     }
 
     private static final String selectClause = "rs.*";
 
-    private static String fromClause = """
+    private static final String fromClause = """
             (select co.id as campaign_offer_id,
                  co.uuid as campaign_offer_uuid,
                  co.name as campaign_offer_name,
@@ -71,10 +43,9 @@ public class CampaignOfferItemReader implements ItemReader<CampaignOffer> {
             or c.deleted_at > :startTime and c.deleted_at < :endTime) rs
             """;
 
-    private Map<String, Order> getSortKeys() {
+    private static Map<String, Order> getSortKeys() {
         Map<String, Order> sortKeys = new LinkedHashMap<>();
         sortKeys.put("campaign_offer_id", Order.ASCENDING);
         return sortKeys;
     }
-
 }

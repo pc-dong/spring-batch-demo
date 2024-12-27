@@ -1,5 +1,6 @@
 package cn.dpc.ecommerce.batch.campaign;
 
+import cn.dpc.ecommerce.batch.common.BaseItemReader;
 import cn.dpc.ecommerce.batch.consts.Constants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.StepExecution;
@@ -17,11 +18,10 @@ import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
-public class CampaignAssociationItemReader implements ItemReader<CampaignAssociation> {
-    private final JdbcPagingItemReader<CampaignAssociation> reader;
+public class CampaignAssociationItemReader extends BaseItemReader<CampaignAssociation> {
 
     public CampaignAssociationItemReader(DataSource dataSource, int pageSize, int fetchSize) {
-        this.reader = new JdbcPagingItemReaderBuilder<CampaignAssociation>()
+        super(new JdbcPagingItemReaderBuilder<CampaignAssociation>()
                 .name("productAssociationItemReader")
                 .dataSource(dataSource)
                 .rowMapper(CampaignAssociation.getRowMapper())
@@ -30,26 +30,7 @@ public class CampaignAssociationItemReader implements ItemReader<CampaignAssocia
                 .sortKeys(getSortKeys())
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
-                .build();
-    }
-
-
-    @BeforeStep
-    public void beforeStep(StepExecution stepExecution) {
-        ExecutionContext executionContext = stepExecution.getJobExecution().getExecutionContext();
-        LocalDateTime lastUpdateTime = Optional.ofNullable(executionContext.get(Constants.LAST_UPDATE_TIME))
-                .map(o -> (LocalDateTime) o).orElse(LocalDateTime.now().minusYears(5));
-        LocalDateTime endTime = Optional.ofNullable(executionContext.get(Constants.END_TIME, LocalDateTime.class))
-                .orElse(LocalDateTime.now());
-
-        this.reader.setParameterValues(Map.of("startTime", lastUpdateTime, "endTime", endTime));
-        log.info("Last update time in reader: {}", lastUpdateTime);
-    }
-
-    @Override
-    public CampaignAssociation read() throws Exception {
-        this.reader.afterPropertiesSet();
-        return this.reader.read();
+                .build());
     }
 
     private static final String selectClause = """
@@ -83,7 +64,7 @@ public class CampaignAssociationItemReader implements ItemReader<CampaignAssocia
             ) pa
             """;
 
-    private Map<String, Order> getSortKeys() {
+    private static Map<String, Order> getSortKeys() {
         Map<String, Order> sortKeys = new LinkedHashMap<>();
         sortKeys.put("campaign_id", Order.ASCENDING);
         sortKeys.put("campaign_offer_id", Order.ASCENDING);

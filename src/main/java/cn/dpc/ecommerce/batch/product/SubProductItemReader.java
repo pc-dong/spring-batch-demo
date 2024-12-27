@@ -1,27 +1,18 @@
 package cn.dpc.ecommerce.batch.product;
 
-import cn.dpc.ecommerce.batch.consts.Constants;
+import cn.dpc.ecommerce.batch.common.BaseItemReader;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.annotation.BeforeStep;
-import org.springframework.batch.item.ExecutionContext;
-import org.springframework.batch.item.ItemReader;
-import org.springframework.batch.item.database.JdbcPagingItemReader;
 import org.springframework.batch.item.database.Order;
 import org.springframework.batch.item.database.builder.JdbcPagingItemReaderBuilder;
 
 import javax.sql.DataSource;
-import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
-public class SubProductItemReader implements ItemReader<SubProduct> {
-    private final JdbcPagingItemReader<SubProduct> reader;
-
+public class SubProductItemReader extends BaseItemReader<SubProduct> {
     public SubProductItemReader(DataSource dataSource, int pageSize, int fetchSize) {
-        this.reader = new JdbcPagingItemReaderBuilder<SubProduct>()
+        super(new JdbcPagingItemReaderBuilder<SubProduct>()
                 .name("subProductItemReader")
                 .dataSource(dataSource)
                 .rowMapper(SubProduct.getRowMapper())
@@ -30,32 +21,13 @@ public class SubProductItemReader implements ItemReader<SubProduct> {
                 .sortKeys(getSortKeys())
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
-                .build();
+                .build());
     }
 
-
-    @BeforeStep
-    public void beforeStep(StepExecution stepExecution) {
-        ExecutionContext executionContext = stepExecution.getJobExecution().getExecutionContext();
-        LocalDateTime lastUpdateTime = Optional.ofNullable(executionContext.get(Constants.LAST_UPDATE_TIME))
-                .map(o -> (LocalDateTime) o).orElse(LocalDateTime.now().minusYears(5));
-        LocalDateTime endTime = Optional.ofNullable(executionContext.get(Constants.END_TIME, LocalDateTime.class))
-                .orElse(LocalDateTime.now());
-
-        this.reader.setParameterValues(Map.of("startTime", lastUpdateTime, "endTime", endTime));
-        log.info("Last update time in reader: {}", lastUpdateTime);
-    }
-
-    @Override
-    public SubProduct read() throws Exception {
-        this.reader.afterPropertiesSet();
-        return this.reader.read();
-    }
-
-    private static String selectClause = """
+    private static final String selectClause = """
             pa.*
             """;
-    private static String fromClause = """
+    private static final String fromClause = """
             (select p.id                    as product_id,
                     p.uuid                  as product_uuid,
                     p.type                  as product_type,
@@ -116,7 +88,7 @@ public class SubProductItemReader implements ItemReader<SubProduct> {
               )) pa
             """;
 
-    private Map<String, Order> getSortKeys() {
+    private static Map<String, Order> getSortKeys() {
         Map<String, Order> sortKeys = new LinkedHashMap<>();
         sortKeys.put("product_id", Order.ASCENDING);
         return sortKeys;

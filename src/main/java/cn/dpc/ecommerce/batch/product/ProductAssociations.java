@@ -173,7 +173,7 @@ public class ProductAssociations {
         return NULL_ID != getOutlet_id()
                 && (shouldPropertyDeleted()
                 || outlet_deleted_at != null
-                || !"INVISIBLE".equals(outlet_status));
+                || "INVISIBLE".equals(outlet_status));
     }
 
     public boolean shouldCampaignDeleted() {
