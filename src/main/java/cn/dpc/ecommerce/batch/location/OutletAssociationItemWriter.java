@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import static cn.dpc.ecommerce.batch.consts.Constants.NULL_ID;
+import static cn.dpc.ecommerce.batch.consts.Constants.NULL_UUID;
 import static cn.dpc.ecommerce.batch.consts.Constants.UPDATED_UPDATE_TIME;
 
 @Slf4j
@@ -47,12 +49,32 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
             String id = outlet.getAssociationId();
             if (outlet.shouldDeleted()) {
                 delete(id, associations);
-                List<String> shouldDeletedIds = outlet.getShouldDeletedIds();
-                shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
-                log.info("Delete outlet item: {}", id);
-                if (outlet.getUpdatedAt().isAfter(lastUpdateTime)) {
-                    lastUpdateTime = outlet.getUpdatedAt();
+                // outlet deleted then all associations should be deleted
+                if (outlet.shouldOutletDeleted()) {
+                    List<String> shouldDeletedIds = outlet.getShouldDeletedIdsForDelete();
+                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+
+                    lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
+                    continue;
                 }
+
+                // just cuisine deleted then need insert a new association
+                String newId = outlet.getAssociationId(outlet.getOutlet_id(), NULL_ID);
+                Map<String, Object> associate = Maps.newLinkedHashMap();
+                associate.put("id", newId);
+                associate.put("association_type", ASSOCIATIONS_TYPE);
+                associate.put("property_uuid", outlet.getProperty_uuid());
+                associate.put("outlet_uuid", outlet.getOutlet_uuid());
+                associate.put("outlet_cuisine_uuid", NULL_UUID);
+                associate.put("cuisine_name_chinese_search", null);
+                associate.put("cuisine_name_chinese_filter", null);
+
+                JSONObject associateJson = new JSONObject();
+                associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
+                associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
+                log.info("Writing outlet item: {}", newId);
+                associations.put(associateJson);
+                lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
                 continue;
             }
 
@@ -64,19 +86,16 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
             associate.put("outlet_cuisine_uuid", outlet.getCuisine_uuid());
             associate.put("cuisine_name_chinese_search", outlet.getCuisine_name_chinese());
             associate.put("cuisine_name_chinese_filter", outlet.getCuisine_name_chinese());
-
+            log.info("Writing outlet item: {}", id);
             JSONObject associateJson = new JSONObject();
             associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
 
-            List<String> shouldDeletedIds = outlet.getShouldDeletedIds();
+            List<String> shouldDeletedIds = outlet.getShouldDeletedIdsForUpdate();
             shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
 
-            log.info("Writing outlet item: {}", id);
             associations.put(associateJson);
-            if (outlet.getUpdatedAt().isAfter(lastUpdateTime)) {
-                lastUpdateTime = outlet.getUpdatedAt();
-            }
+            lastUpdateTime = getLastUpdateTime(outlet, lastUpdateTime);
         }
 
         push(associations, TABLE_NAME, appName);
@@ -84,7 +103,15 @@ public class OutletAssociationItemWriter extends AbstractOpenSearcherItemWriter<
         log.info("Last update time: {}", lastUpdateTime);
     }
 
+    private static LocalDateTime getLastUpdateTime(OutletAssociation outlet, LocalDateTime lastUpdateTime) {
+        if (outlet.getUpdatedAt().isAfter(lastUpdateTime)) {
+            lastUpdateTime = outlet.getUpdatedAt();
+        }
+        return lastUpdateTime;
+    }
+
     private static void delete(String id, JSONArray associations) {
+        log.info("Delete outlet item: {}", id);
         JSONObject deleteJson = new JSONObject();
         deleteJson.put(DocumentConstants.DOC_KEY_CMD, Command.DELETE.toString());
         deleteJson.put(DocumentConstants.DOC_KEY_FIELDS, Map.of("id", id));

@@ -43,16 +43,16 @@ public class OutletAssociation {
         return Optional.ofNullable(outlet_uuid).orElse(NULL_UUID);
     }
 
-    public String getOutlet_cuisine_uuid() {
-        return Optional.ofNullable(outlet_cuisine_uuid).orElse(NULL_UUID);
+    public Long getCuisine_id() {
+        return Optional.ofNullable(cuisine_id).orElse(NULL_ID);
     }
 
     public String getCuisine_uuid() {
-        return shouldCuisineDeleted() ? NULL_UUID : Optional.ofNullable(cuisine_uuid).orElse(NULL_UUID);
+        return Optional.ofNullable(cuisine_uuid).orElse(NULL_UUID);
     }
 
     public String getCuisine_name_chinese() {
-        return shouldCuisineDeleted() ? null : Optional.ofNullable(cuisine_name_chinese).orElse("");
+        return Optional.ofNullable(cuisine_name_chinese).orElse("");
     }
 
     public String getProperty_uuid() {
@@ -84,13 +84,13 @@ public class OutletAssociation {
     }
 
     public boolean shouldPropertyDeleted() {
-        return NULL_ID != this.getProperty_id()
+        return NULL_ID != property_id
                 && (property_deleted_at != null
                 || !activePropertyStatus.contains(property_status));
     }
 
     public boolean shouldOutletDeleted() {
-        return NULL_ID != getOutlet_id()
+        return NULL_ID != outlet_id
                 && (shouldPropertyDeleted()
                 || outlet_deleted_at != null
                 || !"VISIBLE".equals(outlet_status));
@@ -108,13 +108,17 @@ public class OutletAssociation {
     }
 
     public String getAssociationId() {
-        // O_{outlet-id}_{cuisine_id}
-        return String.format("O_%d_%d", outlet_id, cuisine_id);
+        return getAssociationId(getOutlet_id(), getCuisine_id());
     }
 
-    public List<String> getShouldDeletedIds() {
-        return !NULL_UUID.equals(getCuisine_uuid())
-                ? List.of(String.format("O_%d_%d", outlet_id, NULL_ID))
+    public String getAssociationId(Long outletId, Long cuisineId) {
+        // O_{outlet-id}_{cuisine_id}
+        return String.format("O_%d_%d", outletId, cuisineId);
+    }
+
+    public List<String> getShouldDeletedIdsForUpdate() {
+        return NULL_ID != cuisine_id
+                ? List.of(String.format("O_%d_%d", getOutlet_id(), NULL_ID))
                 : List.of();
     }
 
@@ -129,5 +133,9 @@ public class OutletAssociation {
                 .filter(Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
+    }
+
+    public List<String> getShouldDeletedIdsForDelete() {
+        return NULL_ID == getCuisine_id() ? List.of() :  List.of(getAssociationId(outlet_id, NULL_ID));
     }
 }

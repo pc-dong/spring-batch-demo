@@ -165,8 +165,7 @@ public class ProductAssociations {
     public boolean shouldPropertyDeleted() {
         return NULL_ID != getProperty_id()
                 && (property_deleted_at != null
-                || !activePropertyStatus.contains(property_status)
-                || !property_is_cp_enabled);
+                || !activePropertyStatus.contains(property_status));
     }
 
     public boolean shouldOutletDeleted() {
