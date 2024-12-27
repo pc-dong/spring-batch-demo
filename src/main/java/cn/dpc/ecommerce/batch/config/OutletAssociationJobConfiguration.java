@@ -49,6 +49,7 @@ public class OutletAssociationJobConfiguration {
                 .<OutletAssociation, OutletAssociation>chunk(PAGE_SIZE, transactionManager)
                 .reader(outletAssociationItemReader)
                 .writer(outletAssociationItemWriter)
+                .allowStartIfComplete(true)
                 .build();
     }
 

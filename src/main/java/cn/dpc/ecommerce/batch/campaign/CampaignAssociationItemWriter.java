@@ -68,7 +68,7 @@ public class CampaignAssociationItemWriter extends AbstractOpenSearcherItemWrite
                 JSONObject associateJson = new JSONObject();
                 associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
                 associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
-                log.info("Writing campaign item: {}", newId);
+                log.info("Writing campaign association item: {}", newId);
                 associations.put(associateJson);
 
                 lastUpdateTime = getLastUpdateTime(campaign, lastUpdateTime);
@@ -80,7 +80,7 @@ public class CampaignAssociationItemWriter extends AbstractOpenSearcherItemWrite
             associate.put("association_type", ASSOCIATIONS_TYPE);
             associate.put("campaign_uuid", campaign.getCampaign_uuid());
             associate.put("campaign_offer_id", campaign.getCampaign_offer_uuid());
-            log.info("Writing campaign item: {}", id);
+            log.info("Writing campaign association item: {}", id);
             JSONObject associateJson = new JSONObject();
             associateJson.put(DocumentConstants.DOC_KEY_CMD, Command.ADD.toString());
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
@@ -106,7 +106,7 @@ public class CampaignAssociationItemWriter extends AbstractOpenSearcherItemWrite
     }
 
     private static void delete(String id, JSONArray associations) {
-        log.info("Delete campaign item: {}", id);
+        log.info("Delete campaign association item: {}", id);
         JSONObject deleteJson = new JSONObject();
         deleteJson.put(DocumentConstants.DOC_KEY_CMD, Command.DELETE.toString());
         deleteJson.put(DocumentConstants.DOC_KEY_FIELDS, Map.of("id", id));
