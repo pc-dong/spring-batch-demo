@@ -18,7 +18,8 @@ import javax.sql.DataSource;
 public class BatchConfiguration extends DefaultBatchConfiguration {
 
     public static final int PAGE_SIZE = 50;
-    public static final int FETCH_SIZE = 50;
+    public static final int FETCH_SIZE = 1000;
+    public static final int CHUNK_SIZE = 50;
 
     @Bean
     @Qualifier("lastUpdateTimeSaveStep")

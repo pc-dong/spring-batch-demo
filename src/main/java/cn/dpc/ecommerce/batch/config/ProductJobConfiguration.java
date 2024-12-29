@@ -29,11 +29,16 @@ import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import javax.sql.DataSource;
 
+import static cn.dpc.ecommerce.batch.config.BatchConfiguration.CHUNK_SIZE;
 import static cn.dpc.ecommerce.batch.config.BatchConfiguration.FETCH_SIZE;
 import static cn.dpc.ecommerce.batch.config.BatchConfiguration.PAGE_SIZE;
 
 @Configuration
 public class ProductJobConfiguration {
+
+    public static final int ASSOCIATION_PAGE_SIZE = 5000;
+    public static final int ASSOCIATION_FETCH_SIZE1 = 5000;
+
     @Bean
     @Qualifier("productJob")
     public Job productJob(JobRepository jobRepository,
@@ -74,7 +79,7 @@ public class ProductJobConfiguration {
                             ItemReader<Product> productItemReader,
                             ItemWriter<Product> productItemWriter) {
         return new StepBuilder("productStep", jobRepository)
-                .<Product, Product>chunk(PAGE_SIZE, transactionManager)
+                .<Product, Product>chunk(CHUNK_SIZE, transactionManager)
                 .reader(productItemReader)
                 .writer(productItemWriter)
                 .build();
@@ -86,7 +91,7 @@ public class ProductJobConfiguration {
                                ItemReader<SubProduct> subProductItemReader,
                                ItemWriter<SubProduct> subProductItemWriter) {
         return new StepBuilder("subProductStep", jobRepository)
-                .<SubProduct, SubProduct>chunk(PAGE_SIZE, transactionManager)
+                .<SubProduct, SubProduct>chunk(CHUNK_SIZE, transactionManager)
                 .reader(subProductItemReader)
                 .writer(subProductItemWriter)
                 .build();
@@ -98,7 +103,7 @@ public class ProductJobConfiguration {
                                            ItemReader<ProductAssociations> roomProductAssociationItemReader,
                                            ItemWriter<ProductAssociations> productAssociationItemWriter) {
         return new StepBuilder("roomProductAssociationStep", jobRepository)
-                .<ProductAssociations, ProductAssociations>chunk(PAGE_SIZE, transactionManager)
+                .<ProductAssociations, ProductAssociations>chunk(10000, transactionManager)
                 .reader(roomProductAssociationItemReader)
                 .writer(productAssociationItemWriter)
                 .build();
@@ -110,7 +115,7 @@ public class ProductJobConfiguration {
                                          ItemReader<ProductAssociations> fbProductAssociationItemReader,
                                          ItemWriter<ProductAssociations> productAssociationItemWriter) {
         return new StepBuilder("fbProductAssociationStep", jobRepository)
-                .<ProductAssociations, ProductAssociations>chunk(PAGE_SIZE, transactionManager)
+                .<ProductAssociations, ProductAssociations>chunk(10000, transactionManager)
                 .reader(fbProductAssociationItemReader)
                 .writer(productAssociationItemWriter)
                 .build();
@@ -119,10 +124,10 @@ public class ProductJobConfiguration {
     @Bean
     public Step bundleProductAssociationStep(JobRepository jobRepository,
                                              DataSourceTransactionManager transactionManager,
-                                                ItemReader<ProductAssociations> bundleProductAssociationItemReader,
+                                             ItemReader<ProductAssociations> bundleProductAssociationItemReader,
                                              ItemWriter<ProductAssociations> productAssociationItemWriter) {
         return new StepBuilder("bundleProductAssociationStep", jobRepository)
-                .<ProductAssociations, ProductAssociations>chunk(PAGE_SIZE, transactionManager)
+                .<ProductAssociations, ProductAssociations>chunk(10000, transactionManager)
                 .reader(bundleProductAssociationItemReader)
                 .writer(productAssociationItemWriter)
                 .build();
@@ -135,7 +140,7 @@ public class ProductJobConfiguration {
 
     @Bean
     public ItemWriter<Product> productItemWriter(OpenSearchProperties openSearchProperties,
-                                                DocumentClient documentClient) {
+                                                 DocumentClient documentClient) {
         return new ProductItemWriter(openSearchProperties, documentClient);
     }
 
@@ -152,17 +157,17 @@ public class ProductJobConfiguration {
 
     @Bean
     public ItemReader<ProductAssociations> roomProductAssociationItemReader(DataSource masterDataSource) {
-        return new RoomProductAssociationItemReader(masterDataSource, PAGE_SIZE, FETCH_SIZE);
+        return new RoomProductAssociationItemReader(masterDataSource, ASSOCIATION_PAGE_SIZE, ASSOCIATION_FETCH_SIZE1);
     }
 
     @Bean
     public ItemReader<ProductAssociations> fbProductAssociationItemReader(DataSource masterDataSource) {
-        return new FBProductAssociationItemReader(masterDataSource, PAGE_SIZE, FETCH_SIZE);
+        return new FBProductAssociationItemReader(masterDataSource, ASSOCIATION_PAGE_SIZE, ASSOCIATION_FETCH_SIZE1);
     }
 
     @Bean
     public ItemReader<ProductAssociations> bundleProductAssociationItemReader(DataSource masterDataSource) {
-        return new BundleProductAssociationItemReader(masterDataSource, PAGE_SIZE, PAGE_SIZE);
+        return new BundleProductAssociationItemReader(masterDataSource, ASSOCIATION_PAGE_SIZE, ASSOCIATION_FETCH_SIZE1);
     }
 
     @Bean

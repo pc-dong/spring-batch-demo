@@ -15,9 +15,13 @@ import org.springframework.batch.item.Chunk;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static cn.dpc.ecommerce.batch.consts.Constants.NULL_ID;
 import static cn.dpc.ecommerce.batch.consts.Constants.NULL_UUID;
@@ -28,6 +32,7 @@ import static cn.dpc.ecommerce.batch.product.ProductAssociations.getAssociationI
 public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter<ProductAssociations> {
     private StepExecution stepExecution;
     private String appName;
+    private static final Executor executor = Executors.newCachedThreadPool();
 
     public ProductAssociationItemWriter(OpenSearchProperties openSearchProperties,
                                         DocumentClient documentClient) {
@@ -47,30 +52,36 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
     public void write(Chunk<? extends ProductAssociations> chunk) throws Exception {
         JSONArray associations = new JSONArray();
         LocalDateTime lastUpdateTime = (LocalDateTime) stepExecution.getJobExecution().getExecutionContext().get(UPDATED_UPDATE_TIME);
+        List<CompletableFuture<Boolean>> futures = new ArrayList<>();
         for (ProductAssociations product : chunk) {
             String id = product.getAssociationId();
             if (product.shouldDeleted()) {
                 delete(id, associations);
                 if (product.shouldProductDeleted()) {
                     List<String> shouldDeletedIds = product.getShouldDeletedIdsForDelete();
-                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+                    JSONArray finalAssociations1 = associations;
+                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, finalAssociations1));
                     lastUpdateTime = getLastUpdateTime(product, lastUpdateTime);
+                    associations = checkPush(associations, futures);
                     continue;
                 }
 
                 if(product.shouldSubProductDeleted()) {
                     List<String> shouldDeletedIds = product.getShouldDeletedIdsForSubProductDelete();
-                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+                    JSONArray finalAssociations2 = associations;
+                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, finalAssociations2));
                 }
 
                 if(product.shouldProductPurchaseTimeDeleted()) {
                     List<String> shouldDeletedIds = product.getShouldDeletedIdsForPurchaseTimeDelete();
-                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+                    JSONArray finalAssociations3 = associations;
+                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, finalAssociations3));
                 }
 
                 if(product.shouldCampaignOfferDeleted()) {
                     List<String> shouldDeletedIds = product.getShouldDeletedIdsForCampaignDelete();
-                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+                    JSONArray finalAssociations4 = associations;
+                    shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, finalAssociations4));
                 }
 
                 // partial deleted then need insert a new association
@@ -106,6 +117,7 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
                 associations.put(associateJson);
 
                 lastUpdateTime = getLastUpdateTime(product, lastUpdateTime);
+                associations = checkPush(associations, futures);
                 continue;
             }
 
@@ -134,17 +146,48 @@ public class ProductAssociationItemWriter extends AbstractOpenSearcherItemWriter
             associateJson.put(DocumentConstants.DOC_KEY_FIELDS, associate);
 
             List<String> shouldDeletedIds = product.getShouldDeletedIdsForUpdate();
-            shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, associations));
+            JSONArray finalAssociations5 = associations;
+            shouldDeletedIds.forEach(shouldDeletedId -> delete(shouldDeletedId, finalAssociations5));
 
             log.info("Writing productAssociation item: {}", id);
             associations.put(associateJson);
 
             lastUpdateTime = getLastUpdateTime(product, lastUpdateTime);
+            associations = checkPush(associations, futures);
+        }
+        if (associations.length() != 0) {
+            doPush(associations, futures);
         }
 
-        push(associations, TABLE_NAME, appName);
+//        push(associations, TABLE_NAME, appName);
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        for (CompletableFuture<Boolean> future : futures) {
+            if (!future.get()) {
+                throw new RuntimeException("Error pushing data to OpenSearch");
+            }
+        }
         stepExecution.getJobExecution().getExecutionContext().put(UPDATED_UPDATE_TIME, lastUpdateTime);
         log.info("Last update time: {}", lastUpdateTime);
+    }
+
+    private void doPush(JSONArray associations, List<CompletableFuture<Boolean>> futures) {
+        futures.add(CompletableFuture.supplyAsync(() -> {
+            try {
+                push(associations, TABLE_NAME, appName);
+                return true;
+            } catch (Exception e) {
+                log.error("Error pushing data to OpenSearch", e);
+                return false;
+            }
+        }, executor));
+    }
+
+    private JSONArray checkPush(JSONArray associations, List<CompletableFuture<Boolean>> futures) {
+        if(associations.length() >= 100) {
+            doPush(associations, futures);
+            associations = new JSONArray();
+        }
+        return associations;
     }
 
     private LocalDateTime getLastUpdateTime(ProductAssociations product, LocalDateTime lastUpdateTime) {
